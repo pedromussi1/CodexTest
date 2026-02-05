@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
 
 import pandas as pd
@@ -16,6 +16,7 @@ class AlpacaClient:
         self.api_secret = os.getenv("ALPACA_API_SECRET")
         self.trading_url = os.getenv("ALPACA_TRADING_URL", "https://paper-api.alpaca.markets")
         self.data_url = os.getenv("ALPACA_DATA_URL", "https://data.alpaca.markets")
+        self.data_feed = os.getenv("ALPACA_DATA_FEED", "iex")
         if not self.api_key or not self.api_secret:
             raise ValueError("Missing ALPACA_API_KEY or ALPACA_API_SECRET in .env")
 
@@ -33,13 +34,16 @@ class AlpacaClient:
 
     def get_bars(self, symbols: Iterable[str], start: datetime, end: datetime, timeframe: str = "1Day") -> pd.DataFrame:
         url = f"{self.data_url}/v2/stocks/bars"
+        start_utc = start.astimezone(timezone.utc)
+        end_utc = end.astimezone(timezone.utc)
         params = {
             "symbols": ",".join(symbols),
             "timeframe": timeframe,
-            "start": start.isoformat(),
-            "end": end.isoformat(),
+            "start": start_utc.isoformat().replace("+00:00", "Z"),
+            "end": end_utc.isoformat().replace("+00:00", "Z"),
             "adjustment": "all",
             "limit": 10000,
+            "feed": self.data_feed,
         }
 
         all_rows: list[dict] = []

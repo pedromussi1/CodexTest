@@ -26,6 +26,8 @@ python -m src.backtest_atgl
 - Universe
   - Default: a static list of very liquid US stocks and ETFs for fast results
   - Set `UNIVERSE_MODE=dynamic` and `MAX_SYMBOLS=200` to rank by 60-day average dollar volume
+- Data feed
+  - Set `ALPACA_DATA_FEED=iex` for free data, or `sip` if your account has it
 - Time window
   - Use `--years` flag, default is 3
 - Slippage
