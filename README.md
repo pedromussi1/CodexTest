@@ -33,6 +33,8 @@ python -m src.backtest_atgl
   - Use `--years` flag, default is 3
 - Slippage
   - Use `--slippage`, default is 0.0005 (0.05% per turnover)
+- Trade log
+  - Use `--trade-log trade_log.csv` to export trade-level entries/exits
 
 ## Files
 - `src/backtest_atgl.py`

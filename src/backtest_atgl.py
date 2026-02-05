@@ -61,7 +61,14 @@ def build_panel(symbols: list[str], start: datetime, end: datetime) -> tuple[pd.
     return close_df, high_df, low_df
 
 
-def backtest(close_df: pd.DataFrame, high_df: pd.DataFrame, low_df: pd.DataFrame, initial_capital: float, slippage: float) -> dict:
+def backtest(
+    close_df: pd.DataFrame,
+    high_df: pd.DataFrame,
+    low_df: pd.DataFrame,
+    initial_capital: float,
+    slippage: float,
+    trade_log_path: str | None = None,
+) -> dict:
     green_line = high_df.apply(lambda s: sma(s, 250))
 
     rs_score = close_df.apply(composite_relative_strength)
@@ -77,14 +84,59 @@ def backtest(close_df: pd.DataFrame, high_df: pd.DataFrame, low_df: pd.DataFrame
     exit_rule = (close_df < green_line) | mw_down
 
     positions = pd.DataFrame(0, index=close_df.index, columns=close_df.columns, dtype=int)
+    trades: list[dict] = []
     for sym in close_df.columns:
         in_pos = False
+        entry_date = None
+        entry_price = None
         for dt in close_df.index:
             if not in_pos and bool(entry.loc[dt, sym]):
                 in_pos = True
+                entry_date = dt
+                entry_price = float(close_df.loc[dt, sym])
             elif in_pos and bool(exit_rule.loc[dt, sym]):
                 in_pos = False
+                exit_price = float(close_df.loc[dt, sym])
+                below_green = bool(close_df.loc[dt, sym] < green_line.loc[dt, sym])
+                mw_down_hit = bool(mw_down.loc[dt, sym])
+                if below_green and mw_down_hit:
+                    exit_reason = "BelowGreenLine+MoneyWaveDown"
+                elif below_green:
+                    exit_reason = "BelowGreenLine"
+                else:
+                    exit_reason = "MoneyWaveDown"
+
+                trades.append(
+                    {
+                        "symbol": sym,
+                        "entry_date": entry_date,
+                        "entry_price": entry_price,
+                        "exit_date": dt,
+                        "exit_price": exit_price,
+                        "return_pct": (exit_price / entry_price - 1.0) if entry_price else None,
+                        "bars_held": (dt - entry_date).days if entry_date else None,
+                        "exit_reason": exit_reason,
+                    }
+                )
+                entry_date = None
+                entry_price = None
             positions.loc[dt, sym] = 1 if in_pos else 0
+
+        if in_pos and entry_date is not None and entry_price is not None:
+            dt = close_df.index[-1]
+            exit_price = float(close_df.loc[dt, sym])
+            trades.append(
+                {
+                    "symbol": sym,
+                    "entry_date": entry_date,
+                    "entry_price": entry_price,
+                    "exit_date": dt,
+                    "exit_price": exit_price,
+                    "return_pct": (exit_price / entry_price - 1.0),
+                    "bars_held": (dt - entry_date).days,
+                    "exit_reason": "EndOfTest",
+                }
+            )
 
     daily_returns = close_df.pct_change().fillna(0.0)
     weights = positions.div(positions.sum(axis=1), axis=0).fillna(0.0)
@@ -97,11 +149,18 @@ def backtest(close_df: pd.DataFrame, high_df: pd.DataFrame, low_df: pd.DataFrame
 
     stats = summary_stats(equity, portfolio_returns)
 
+    if trade_log_path:
+        trade_df = pd.DataFrame(trades)
+        if not trade_df.empty:
+            trade_df = trade_df.sort_values(["entry_date", "symbol"])
+        trade_df.to_csv(trade_log_path, index=False)
+
     return {
         "equity": equity,
         "returns": portfolio_returns,
         "stats": stats,
         "positions": positions,
+        "trades": trades,
     }
 
 
@@ -112,6 +171,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--slippage", type=float, default=0.0005)
     parser.add_argument("--universe", type=str, default="static", choices=["static", "dynamic"])
     parser.add_argument("--max-symbols", type=int, default=200)
+    parser.add_argument("--trade-log", type=str, default="trade_log.csv")
     return parser.parse_args()
 
 
@@ -124,7 +184,8 @@ def main() -> None:
     symbols = get_universe(mode=args.universe, max_symbols=args.max_symbols)
     close_df, high_df, low_df = build_panel(symbols, start, end)
 
-    result = backtest(close_df, high_df, low_df, args.capital, args.slippage)
+    trade_log_path = args.trade_log if args.trade_log else None
+    result = backtest(close_df, high_df, low_df, args.capital, args.slippage, trade_log_path=trade_log_path)
 
     stats = result["stats"]
     print("ATGL Backtest Summary")
