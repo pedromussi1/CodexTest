@@ -18,9 +18,9 @@ DEFAULT_UNIVERSE = [
 ]
 
 
-def get_universe() -> list[str]:
-    mode = os.getenv("UNIVERSE_MODE", "static").lower()
-    max_symbols = int(os.getenv("MAX_SYMBOLS", "200"))
+def get_universe(mode: str | None = None, max_symbols: int | None = None) -> list[str]:
+    mode = (mode or os.getenv("UNIVERSE_MODE", "static")).lower()
+    max_symbols = max_symbols or int(os.getenv("MAX_SYMBOLS", "200"))
 
     if mode == "static":
         return DEFAULT_UNIVERSE

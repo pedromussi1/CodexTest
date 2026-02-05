@@ -110,6 +110,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--capital", type=float, default=100000.0)
     parser.add_argument("--years", type=int, default=3)
     parser.add_argument("--slippage", type=float, default=0.0005)
+    parser.add_argument("--universe", type=str, default="static", choices=["static", "dynamic"])
+    parser.add_argument("--max-symbols", type=int, default=200)
     return parser.parse_args()
 
 
@@ -119,7 +121,7 @@ def main() -> None:
     end = datetime.utcnow()
     start = end - timedelta(days=365 * args.years)
 
-    symbols = get_universe()
+    symbols = get_universe(mode=args.universe, max_symbols=args.max_symbols)
     close_df, high_df, low_df = build_panel(symbols, start, end)
 
     result = backtest(close_df, high_df, low_df, args.capital, args.slippage)
