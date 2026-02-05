@@ -38,6 +38,8 @@ python -m src.paper_atgl --universe dynamic --max-symbols 200 --live
 Notes:
 - Default lookback is 600 days to compute 250-day green line and 12-month relative strength.
 - Add `--min-price 5` to avoid thin/low-price stocks.
+- Create a `pause_trading.txt` file to temporarily disable live orders (it will force dry-run).
+- A run summary is written to `latest_summary.txt`.
 
 ## Configuration
 - Universe

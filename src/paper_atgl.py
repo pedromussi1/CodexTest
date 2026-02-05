@@ -78,6 +78,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-price", type=float, default=5.0)
     parser.add_argument("--dry-run", action="store_true", default=True)
     parser.add_argument("--live", action="store_true")
+    parser.add_argument("--pause-file", type=str, default="pause_trading.txt")
+    parser.add_argument("--summary-file", type=str, default="latest_summary.txt")
     return parser.parse_args()
 
 
@@ -85,6 +87,10 @@ def main() -> None:
     args = parse_args()
     if args.live:
         args.dry_run = False
+
+    if args.pause_file and os.path.exists(args.pause_file):
+        print(f"PAUSED: Found {args.pause_file}. No orders will be submitted.")
+        args.dry_run = True
 
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=args.lookback_days)
@@ -145,6 +151,20 @@ def main() -> None:
         else:
             trading.submit_order(sym, qty=qty, side="buy")
             print(f"BUY {sym} qty={qty} est_price={price:.2f}")
+
+    if args.summary_file:
+        summary = [
+            "ATGL Paper Trading Summary",
+            "--------------------------",
+            f"Signals date: {close_df.index[-1].date()}",
+            f"Entry signals: {len(entry_symbols)}  Exit signals: {len(exit_symbols)}",
+            f"Positions: {len(current_positions)}  Buy: {len(to_buy)}  Sell: {len(to_sell)}",
+            f"Cash: {cash:.2f}  Buying Power: {buying_power:.2f}  Alloc per new position: {alloc:.2f}",
+            f"Mode: {'DRY RUN' if args.dry_run else 'LIVE'}",
+            f"Pause file: {args.pause_file if args.pause_file else 'None'}",
+        ]
+        with open(args.summary_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(summary) + "\n")
 
 
 if __name__ == "__main__":

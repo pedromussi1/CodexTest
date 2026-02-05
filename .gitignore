@@ -6,3 +6,6 @@ data_cache/
 .vscode/
 trade_log.csv
 trade_log_*.csv
+logs/
+latest_summary.txt
+pause_trading.txt
