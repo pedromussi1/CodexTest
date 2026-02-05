@@ -22,6 +22,23 @@ pip install -r requirements.txt
 python -m src.backtest_atgl
 ```
 
+## Paper trading (live signals)
+This script evaluates **current signals** and places paper orders on your Alpaca account so you can see them on the Alpaca dashboard.
+
+Dry run (no orders submitted):
+```powershell
+python -m src.paper_atgl --universe dynamic --max-symbols 200
+```
+
+Live trading (submits orders):
+```powershell
+python -m src.paper_atgl --universe dynamic --max-symbols 200 --live
+```
+
+Notes:
+- Default lookback is 600 days to compute 250-day green line and 12-month relative strength.
+- Add `--min-price 5` to avoid thin/low-price stocks.
+
 ## Configuration
 - Universe
   - Default: a static list of very liquid US stocks and ETFs for fast results

@@ -4,3 +4,5 @@ __pycache__/
 data_cache/
 .venv/
 .vscode/
+trade_log.csv
+trade_log_*.csv
