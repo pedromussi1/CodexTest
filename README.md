@@ -40,6 +40,7 @@ Notes:
 - Add `--min-price 5` to avoid thin/low-price stocks.
 - Create a `pause_trading.txt` file to temporarily disable live orders (it will force dry-run).
 - A run summary is written to `latest_summary.txt`.
+- The summary includes full buy/sell lists.
 
 ## Configuration
 - Universe
@@ -54,6 +55,9 @@ Notes:
   - Use `--slippage`, default is 0.0005 (0.05% per turnover)
 - Trade log
   - Use `--trade-log trade_log.csv` to export trade-level entries/exits
+- Email notifications
+  - Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `EMAIL_TO` in `.env`
+  - The scheduler runs with `--email` to send the summary after each run
 
 ## Files
 - `src/backtest_atgl.py`

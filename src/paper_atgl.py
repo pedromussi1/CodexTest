@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import smtplib
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 
 import pandas as pd
 from tqdm import tqdm
@@ -80,6 +82,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--live", action="store_true")
     parser.add_argument("--pause-file", type=str, default="pause_trading.txt")
     parser.add_argument("--summary-file", type=str, default="latest_summary.txt")
+    parser.add_argument("--email", action="store_true", default=False)
     return parser.parse_args()
 
 
@@ -152,6 +155,19 @@ def main() -> None:
             trading.submit_order(sym, qty=qty, side="buy")
             print(f"BUY {sym} qty={qty} est_price={price:.2f}")
 
+    buy_lines = []
+    for sym in to_buy:
+        price = float(latest_close.loc[sym])
+        qty = int(alloc // price)
+        if qty > 0:
+            buy_lines.append(f"BUY {sym} qty={qty} est_price={price:.2f}")
+
+    sell_lines = []
+    for sym in to_sell:
+        qty = int(float(current_positions[sym].get("qty", 0)))
+        if qty > 0:
+            sell_lines.append(f"SELL {sym} qty={qty}")
+
     if args.summary_file:
         summary = [
             "ATGL Paper Trading Summary",
@@ -162,9 +178,39 @@ def main() -> None:
             f"Cash: {cash:.2f}  Buying Power: {buying_power:.2f}  Alloc per new position: {alloc:.2f}",
             f"Mode: {'DRY RUN' if args.dry_run else 'LIVE'}",
             f"Pause file: {args.pause_file if args.pause_file else 'None'}",
+            "",
+            "Sell list:",
+            *sell_lines if sell_lines else ["(none)"],
+            "",
+            "Buy list:",
+            *buy_lines if buy_lines else ["(none)"],
         ]
         with open(args.summary_file, "w", encoding="utf-8") as f:
             f.write("\n".join(summary) + "\n")
+
+    if args.email:
+        smtp_host = os.getenv("SMTP_HOST")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        smtp_user = os.getenv("SMTP_USER")
+        smtp_pass = os.getenv("SMTP_PASS")
+        email_from = os.getenv("EMAIL_FROM")
+        email_to = os.getenv("EMAIL_TO")
+
+        if all([smtp_host, smtp_user, smtp_pass, email_from, email_to, args.summary_file]):
+            with open(args.summary_file, "r", encoding="utf-8") as f:
+                body = f.read()
+            msg = EmailMessage()
+            msg["Subject"] = "ATGL Paper Trading Summary"
+            msg["From"] = email_from
+            msg["To"] = email_to
+            msg.set_content(body)
+
+            with smtplib.SMTP(smtp_host, smtp_port) as server:
+                server.starttls()
+                server.login(smtp_user, smtp_pass)
+                server.send_message(msg)
+        else:
+            print("Email not sent: missing SMTP_* or EMAIL_* settings.")
 
 
 if __name__ == "__main__":
